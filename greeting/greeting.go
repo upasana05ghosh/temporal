@@ -9,6 +9,7 @@ import (
 	"net/url"
 	"time"
 
+	"go.temporal.io/sdk/temporal"
 	"go.temporal.io/sdk/workflow"
 )
 
@@ -43,8 +44,16 @@ func GreetInSpanish(ctx context.Context, name string) (string, error) {
 
 // workflow which calls activity
 func GreetSomeone(ctx workflow.Context, name string) (string, error) {
+	retryPolicy := &temporal.RetryPolicy{
+		InitialInterval:    15 * time.Second, //first retry will occur after 15 sec
+		BackoffCoefficient: 2.0,              // double the delay after each retry -> 2, 4, 8, 64
+		MaximumInterval:    time.Second * 60, // delay upto 60 sec in above logic
+		MaximumAttempts:    100,              //fail activity after 100 attempts
+	}
+
 	options := workflow.ActivityOptions{
 		StartToCloseTimeout: time.Second * 5,
+		RetryPolicy:         retryPolicy,
 	}
 	ctx = workflow.WithActivityOptions(ctx, options)
 	var spanishGreeting string
